@@ -1,5 +1,5 @@
 ---
-- hosts: k8s
+- hosts: worker:master
   tasks:
     - file:
         state: directory

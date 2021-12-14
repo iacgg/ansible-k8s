@@ -1,11 +1,19 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/ubuntu2004"
 
+  (101..101).each do |i|
+    config.vm.define "master-#{i}" do |master|
+    master.vm.network "private_network", ip: "192.168.50.#{i}"
+    master.vm.provision "shell",
+        inline: "echo hello from master #{i}"
+    end
+  end
+
   (10..12).each do |i|
-    config.vm.define "k8s-#{i}" do |k8s|
-    k8s.vm.network "private_network", ip: "192.168.50.#{i}"
-    k8s.vm.provision "shell",
-        inline: "echo hello from k8s #{i}"
+    config.vm.define "worker-#{i}" do |worker|
+    worker.vm.network "private_network", ip: "192.168.50.#{i}"
+    worker.vm.provision "shell",
+        inline: "echo hello from worker #{i}"
     end
   end
 
