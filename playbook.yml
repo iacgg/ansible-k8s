@@ -1,0 +1,6 @@
+---
+- hosts: k8s
+  tasks:
+    - file:
+        state: directory
+        path: /home/sb/test
