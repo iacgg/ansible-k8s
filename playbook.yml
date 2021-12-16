@@ -1,6 +1,9 @@
 ---
 - hosts: master:worker
   tasks:
+    - hostname:
+        name: "{{ inventory_hostname }}"
+
     - package:
         state: present
         name:
@@ -28,3 +31,66 @@
           - docker-ce
           - docker-ce-cli
           - containerd.io
+
+    - copy:
+        src: daemon.json
+        dest:  /etc/docker/daemon.json
+      register: docker_daemon
+
+    - systemd:
+        service: docker
+        state: restarted
+        daemon_reload: true
+      when: docker_daemon is changed
+
+    - apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+    - apt_repository:
+        repo: "deb [arch=amd64]  https://apt.kubernetes.io/ kubernetes-xenial main"
+      register: k8s_deb
+
+#    - replace:
+#        path: /etc/fstab
+#        regexp: '^# (.+?\sswap\s+sw\s+.*)$'
+#        replace: '\1'
+#      register: fstab
+#
+#    - shell: |
+#        swapon -a
+#      when: fstab is changed
+
+    - package:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+
+    - dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+          - kubelet
+          - kubeadm
+          - kubectl
+
+    - systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop:
+          - kubelet
+
+- hosts: master
+  tasks:
+    - shell: "sudo kubeadm init --pod-network-cidr=10.244.0.0/16"
+      register: init
+    - shell: "{{ item }}"
+      loop:
+        - "mkdir -p $HOME/.kube"
+        - "sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config"
+        - "sudo chown $(id -u):$(id -g) $HOME/.kube/config"
+        - "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+        - "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/k8s-manifests/kube-flannel-rbac.yml"
+    - debug:
+        var: init
