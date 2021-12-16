@@ -83,8 +83,15 @@
 
 - hosts: master
   tasks:
+    - shell:  kubeadm token list
+      ignore_errors: true
+      changed_when: kubeadm_init.rc == 1
+      register: kubeadm_init
+
     - shell: "sudo kubeadm init --pod-network-cidr=10.244.0.0/16"
       register: init
+      when: kubeadm_init.rc == 1
+
     - shell: "{{ item }}"
       loop:
         - "mkdir -p $HOME/.kube"
@@ -92,5 +99,28 @@
         - "sudo chown $(id -u):$(id -g) $HOME/.kube/config"
         - "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
         - "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/k8s-manifests/kube-flannel-rbac.yml"
-    - debug:
-        var: init
+      when: kubeadm_init.rc == 1
+
+    - shell: kubeadm token create
+      register: kubeadm_token
+      when: kubeadm_init.rc == 1
+
+    - shell: openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+      register: kubeadm_ca_sha256
+      when: kubeadm_init.rc == 1
+
+    - set_fact:
+        test1: "{{ kubeadm_token.stdout }}"
+        test2: "{{ kubeadm_ca_sha256.stdout }}"
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['worker'] }}"
+      when: kubeadm_init.rc == 1
+
+    - pause:
+        seconds: 40
+      when: kubeadm_init.rc == 1
+
+    - shell: "kubeadm join {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:6443 --token {{ test1 }}  --discovery-token-ca-cert-hash sha256:{{ test2 }}"
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['worker'] }}"
+      when: kubeadm_init.rc == 1
