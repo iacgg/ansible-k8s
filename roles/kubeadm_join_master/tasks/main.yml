@@ -1,0 +1,13 @@
+---
+- name: See if admin.conf exists, so it knows if it should try and join this as a control plane node
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_ca_crt
+  tags:
+    - kubeadm_join_master
+
+- name: Join the master node to the cluster
+  shell: "kubeadm join {{ hostvars[groups['haproxy'][0]]['ansible_default_ipv4']['address'] }}:6443 --token {{ kubeadm_join_token }}  --discovery-token-ca-cert-hash sha256:{{ kubeadm_join_sha256 }} --control-plane --certificate-key {{ kubeadm_join_cert_key }}"
+  when: not kubeadm_ca_crt.stat.exists
+  tags:
+    - kubeadm_join_master

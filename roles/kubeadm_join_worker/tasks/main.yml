@@ -1,0 +1,13 @@
+---
+- name: See if ca.crt exist, to see if it should try and join the worker
+  stat:
+    path: /etc/kubernetes/pki/ca.crt
+  register: kubeadm_ca_crt
+  tags:
+    - kubeadm_join_worker
+
+- name: Join the worker node to the cluster
+  shell: "kubeadm join {{ hostvars[groups['haproxy'][0]]['ansible_default_ipv4']['address'] }}:6443 --token {{ kubeadm_join_token }}  --discovery-token-ca-cert-hash sha256:{{ kubeadm_join_sha256 }}"
+  when: not kubeadm_ca_crt.stat.exists
+  tags:
+    - kubeadm_join_worker

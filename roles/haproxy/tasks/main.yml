@@ -1,0 +1,33 @@
+---
+- name: Ensure haproxy is installed
+  package:
+    name: haproxy
+    state: present
+  tags:
+    - haproxy
+
+- name: Ensure haproxy is enabled
+  systemd:
+    name: haproxy
+    enabled: true
+  tags:
+    - haproxy
+
+- name: Ensure the config file is templated
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: 0644
+  register: haproxy_config
+  tags:
+    - haproxy
+
+- name: Ensure haproxy is restarted if needed
+  systemd:
+    name: haproxy
+    state: restarted
+  when: haproxy_config is changed
+  tags:
+    - haproxy

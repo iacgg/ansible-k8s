@@ -1,0 +1,60 @@
+---
+- shell:  kubeadm token list
+  ignore_errors: true
+  changed_when: kubeadm_init.rc == 1
+  register: kubeadm_init
+  tags:
+    - kubeadm_bootstrap
+
+- name: Run kubeadm to bootstrap the first master with the single haproxy as control-plane-endpoint
+  shell: kubeadm init --pod-network-cidr=10.244.0.0/16 --control-plane-endpoint "{{ hostvars[groups['haproxy'][0]]['ansible_default_ipv4']['address'] }}:6443" --upload-certs
+  register: kube_adm_init
+  when: kubeadm_init.rc == 1
+  tags:
+    - kubeadm_bootstrap
+  
+
+- shell: "{{ item }}"
+  loop:
+    - "mkdir -p $HOME/.kube"
+    - "sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config"
+    - "sudo chown $(id -u):$(id -g) $HOME/.kube/config"
+    - "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+    - "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/k8s-manifests/kube-flannel-rbac.yml"
+  when: kubeadm_init.rc == 1
+  tags:
+    - kubeadm_bootstrap
+
+
+- shell: kubeadm token create
+  register: kubeadm_token
+  tags:
+    - kubeadm_bootstrap
+    - kubeadm_join_master
+    - kubeadm_join_worker
+
+- shell: openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+  register: kubeadm_ca_sha256
+  tags:
+    - kubeadm_bootstrap
+    - kubeadm_join_master
+    - kubeadm_join_worker
+
+- shell: kubeadm init phase upload-certs --upload-certs | tail -n 1
+  register: kubeadm_cert_key
+  tags:
+    - kubeadm_bootstrap
+    - kubeadm_join_master
+    - kubeadm_join_worker
+
+- set_fact:
+    kubeadm_join_token: "{{ kubeadm_token.stdout }}"
+    kubeadm_join_sha256: "{{ kubeadm_ca_sha256.stdout }}"
+    kubeadm_join_cert_key: "{{ kubeadm_cert_key.stdout }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups['worker'] + groups['more_master'] | default ([]) }}"
+  tags:
+    - kubeadm_bootstrap
+    - kubeadm_join_master
+    - kubeadm_join_worker

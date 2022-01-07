@@ -24,9 +24,15 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  (101..102).each do |i|
-    config.vm.define "master-#{i}" do |master|
-    master.vm.network "private_network", ip: "192.168.50.#{i}"
+  (101..101).each do |i|
+    config.vm.define "init_master-#{i}" do |init_master|
+    init_master.vm.network "private_network", ip: "192.168.50.#{i}"
+    end
+  end
+
+  (102..102).each do |i|
+    config.vm.define "more_master-#{i}" do |more_master|
+    more_master.vm.network "private_network", ip: "192.168.50.#{i}"
     end
   end
 
