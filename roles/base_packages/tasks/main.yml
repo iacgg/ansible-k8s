@@ -1,0 +1,12 @@
+---
+- name: Ensure base packages are installed
+  package:
+    state: present
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+  tags:
+    - base_packages

@@ -18,7 +18,13 @@ Vagrant.configure("2") do |config|
   config.vm.box = "generic/ubuntu2004"
   config.vm.provision "shell", inline: $script
 
-  (101..101).each do |i|
+  (201..201).each do |i|
+    config.vm.define "haproxy-#{i}" do |haproxy|
+    haproxy.vm.network "private_network", ip: "192.168.50.#{i}"
+    end
+  end
+
+  (101..102).each do |i|
     config.vm.define "master-#{i}" do |master|
     master.vm.network "private_network", ip: "192.168.50.#{i}"
     end

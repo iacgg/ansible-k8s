@@ -1,0 +1,45 @@
+---
+- name: Ensure the gpg key for docker is present
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+  tags:
+    - docker
+
+- name: Ensure the apt repo for docker is in place
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/{{ ansible_system | lower }}/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+  register: docker_deb
+  tags:
+    - docker
+
+- name: Ensure the cache for apt is updated, if a apt is added
+  package:
+    update_cache: true
+  when: docker_deb is changed
+  tags:
+    - docker
+
+- name: Ensure docker and containerd is present
+  package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+  tags:
+    - docker
+
+- copy:
+    src: daemon.json
+    dest:  /etc/docker/daemon.json
+  register: docker_daemon
+  tags:
+    - docker
+
+- systemd:
+    service: docker
+    state: restarted
+    daemon_reload: true
+  when: docker_daemon is changed
+  tags:
+    - docker

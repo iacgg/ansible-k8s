@@ -1,0 +1,64 @@
+---
+- name: Ensure google cloud gpg key is present
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+  tags:
+    - kubelet
+
+- name: Ensure kubernetes apt repo is present
+  apt_repository:
+    repo: "deb [arch=amd64]  https://apt.kubernetes.io/ kubernetes-xenial main"
+  register: k8s_deb
+  tags:
+    - kubelet
+
+- name: Ensure the cache for apt is updated, if a apt is added
+  package:
+    update_cache: true
+  when: k8s_deb is changed
+  tags:
+    - kubelet
+
+#  - replace:
+#      path: /etc/fstab
+#      regexp: '^# (.+?\sswap\s+sw\s+.*)$'
+#      replace: '\1'
+#    register: fstab
+#   tags:
+#     - kubelet
+# 
+#  - shell: |
+#      swapon -a
+#    when: fstab is changed
+#   tags:
+#     - kubelet
+
+- name: Ensure kubelet and dep is installed
+  package:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+  tags:
+    - kubelet
+
+- name: Ensure the versions of the packages is on hold
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+      - kubelet
+      - kubeadm
+      - kubectl
+  tags:
+    - kubelet
+
+- name: Ensure kubelet is started and enabled
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+      - kubelet
+  tags:
+    - kubelet

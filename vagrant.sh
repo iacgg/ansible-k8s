@@ -2,6 +2,8 @@
 
 worker_start=10
 worker_end=12
+haproxy_start=201
+haproxy_end=201
 master_start=101
 master_end=101
 
@@ -10,6 +12,12 @@ echo -n '    "worker": {'
 echo -n '        "hosts": '
 echo -n '['
 for number in $(seq $worker_start $worker_end); do echo -n "\"192.168.50.$number\"" ; if [ $number -lt $worker_end ]; then echo -n "," ; fi ;done
+echo -n ']'
+echo -n '    },'
+echo -n '    "haproxy": {'
+echo -n '        "hosts": '
+echo -n '['
+for number in $(seq $haproxy_start $haproxy_end); do echo -n "\"192.168.50.$number\"" ; if [ $number -lt $haproxy_end ]; then echo -n "," ; fi ;done
 echo -n ']'
 echo -n '    },'
 echo -n '    "master": {'
